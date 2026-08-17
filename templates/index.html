@@ -48,7 +48,7 @@
       <div class="form-footer">
         <label class="provider-select">翻譯方式
           <select name="provider" id="provider">
-            <option value="groq" {% if provider == 'groq' %}selected{% endif %}>Groq AI（較自然）</option>
+            <option value="ai" {% if provider in ['ai', 'groq'] %}selected{% endif %}>{{ ai_provider_name }}（較自然）</option>
             <option value="google" {% if provider == 'google' %}selected{% endif %}>Google 翻譯（較快速）</option>
           </select>
         </label>
@@ -91,7 +91,7 @@
             <div class="translation-column">
               <textarea class="translation-input" rows="2" aria-label="第 {{ line.id + 1 }} 行中文翻譯">{{ line.translation }}</textarea>
               <div class="line-toolbar">
-                <span class="provider-badge">{{ 'Groq AI' if provider == 'groq' else 'Google 翻譯' }}</span>
+                <span class="provider-badge">{{ ai_provider_name if provider in ['ai', 'groq'] else 'Google 翻譯' }}</span>
                 <button type="button" class="text-button google-button">Google 候選</button>
                 <button type="button" class="text-button regenerate-button">重新翻譯</button>
               </div>
