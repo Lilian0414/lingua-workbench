@@ -117,3 +117,30 @@ def test_google_provider_uses_language_source_code(code, google_code):
     result = GoogleTransProvider(translator).translate(parse_text("第一行"), get_language(code))
     assert result == {0: "譯:第一行"}
     assert translator.calls[0][1] == {"src": google_code, "dest": "zh-tw"}
+
+
+def test_google_provider_creates_fresh_async_translator_for_consecutive_calls():
+    instances = []
+
+    class LoopBoundTranslator:
+        def __init__(self):
+            self.closed = False
+            instances.append(self)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc_value, traceback):
+            self.closed = True
+
+        async def translate(self, text, **kwargs):
+            assert not self.closed
+            return SimpleNamespace(text=f"譯:{text}")
+
+    provider = GoogleTransProvider(translator_factory=LoopBoundTranslator)
+    language = get_language("ja")
+
+    assert provider.translate_line("君が好き", language) == "譯:君が好き"
+    assert provider.translate_line("月が綺麗", language) == "譯:月が綺麗"
+    assert len(instances) == 2
+    assert all(instance.closed for instance in instances)

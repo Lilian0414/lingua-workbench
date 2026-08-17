@@ -22,6 +22,9 @@ def test_home_has_both_language_choices(client):
     assert response.status_code == 200
     assert 'value="ja"' in response.text
     assert 'value="ko"' in response.text
+    assert "日韓歌詞手帖" in response.text
+    assert 'class="translation-sheet"' in response.text
+    assert 'class="provider-option"' in response.text
 
 
 def test_korean_document_translation_renders_reading(client, monkeypatch):
@@ -36,6 +39,9 @@ def test_korean_document_translation_renders_reading(client, monkeypatch):
     assert "annyeong" in response.text
     assert "你好" in response.text
     assert 'data-language="ko"' in response.text
+    assert 'class="lyric-line"' in response.text
+    assert 'class="style-select"' in response.text
+    assert 'class="line-button reset-line-button"' in response.text
 
 
 def test_invalid_language_returns_400(client):
@@ -65,6 +71,40 @@ def test_google_line_api_keeps_selected_language(client, monkeypatch):
     assert response.status_code == 200
     assert response.get_json()["translation"] == "候選"
     assert captured == {"text": "안녕", "code": "ko"}
+
+
+def test_google_line_api_succeeds_twice_with_fresh_async_clients(client, monkeypatch):
+    instances = []
+
+    class AsyncTranslator:
+        def __init__(self):
+            self.closed = False
+            instances.append(self)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc_value, traceback):
+            self.closed = True
+
+        async def translate(self, text, **kwargs):
+            assert not self.closed
+            return SimpleNamespace(text=f"譯:{text}")
+
+    monkeypatch.setattr(
+        application,
+        "google_provider",
+        application.GoogleTransProvider(translator_factory=AsyncTranslator),
+    )
+    payload = {"lyrics": "君が好き", "source_language": "ja", "target_id": 0}
+
+    first = client.post("/api/google-line", json=payload)
+    second = client.post("/api/google-line", json=payload)
+
+    assert first.status_code == second.status_code == 200
+    assert first.get_json()["translation"] == second.get_json()["translation"] == "譯:君が好き"
+    assert len(instances) == 2
+    assert all(instance.closed for instance in instances)
 
 
 def test_regenerate_api_passes_context(client, monkeypatch):

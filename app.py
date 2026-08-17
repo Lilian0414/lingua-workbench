@@ -57,6 +57,7 @@ def _render(error: str = "", status: int = 200, **context):
     context.setdefault("source_language", source_code)
     context.setdefault("provider", "ai")
     context.setdefault("ai_provider_name", llm_provider.name)
+    context.setdefault("max_length", MAX_TEXT_LENGTH)
     context.setdefault("lyrics", "")
     context.setdefault("results", [])
     context.setdefault("error", error)
