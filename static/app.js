@@ -45,7 +45,17 @@
     let draft;
     try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY)); } catch { return; }
     if (!draft) return;
-    if (lyrics && !lyrics.value && !results && draft.lyrics) lyrics.value = draft.lyrics;
+    if (lyrics && !lyrics.value && !results && draft.lyrics) {
+      lyrics.value = draft.lyrics;
+      const languageControl = document.querySelector(
+        `input[name="source_language"][value="${draft.sourceLanguage}"]`
+      );
+      if (languageControl) languageControl.checked = true;
+      const providerControl = document.querySelector("#provider");
+      if (providerControl && ["groq", "google"].includes(draft.provider)) {
+        providerControl.value = draft.provider;
+      }
+    }
     if (results && draft.lyrics === lyrics?.value && draft.sourceLanguage === sourceLanguage()) {
       lineElements().forEach((line) => {
         const value = draft.translations?.[line.dataset.lineId];
