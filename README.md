@@ -59,7 +59,7 @@ AI 翻譯由部署者設定，網站的一般使用者不需要也不會被要�
 
 ## 選擇 AI 廠商
 
-框架不綁定 Groq。任何提供 OpenAI-compatible `POST /chat/completions` 的服務都能使用：
+任何提供 OpenAI-compatible `POST /chat/completions` 的服務都能使用：
 
 ```env
 LLM_API_KEY=your_provider_api_key
@@ -69,7 +69,7 @@ LLM_DISPLAY_NAME=AI 翻譯
 LLM_RESPONSE_FORMAT=json_schema
 ```
 
-例如可改接 OpenAI、OpenRouter、DeepSeek 或其他相容廠商，只需換掉 `LLM_BASE_URL`、`LLM_MODEL` 與 API key。自訂端點只接受部署環境變數，不開放網站訪客填寫，以免公開服務出現 SSRF 風險。
+例如可接 OpenAI、OpenRouter、DeepSeek 或其他相容廠商，只需換掉 `LLM_BASE_URL`、`LLM_MODEL` 與 API key。自訂端點只接受部署環境變數，不開放網站訪客填寫，以免公開服務出現 SSRF 風險。
 
 各廠商支援的結構化輸出不同：
 
@@ -77,7 +77,6 @@ LLM_RESPONSE_FORMAT=json_schema
 - `json_object`：廠商只支援 JSON mode 時使用。
 - `prompt_only`：完全不支援 `response_format` 時使用，框架仍會驗證每個行號。
 
-為了舊部署平順遷移，尚未設定 `LLM_API_KEY` 時仍會讀取既有的 `GROQ_API_KEY` 與 `GROQ_MODEL`。
 
 ## 測試
 
@@ -93,7 +92,6 @@ python -m compileall -q .
 2. 新增 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 環境變數。
 3. 部署；`vercel.json` 已將 Flask 入口指向 `app.py`。
 
-目前不取代既有正式網站；新專案可先獨立預覽與驗收。
 
 ## 技術選擇
 
