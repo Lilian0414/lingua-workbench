@@ -1,4 +1,4 @@
 from .googletrans_provider import GoogleTransProvider
-from .groq_provider import GroqProvider
+from .llm_provider import LLMProvider
 
-__all__ = ["GoogleTransProvider", "GroqProvider"]
+__all__ = ["GoogleTransProvider", "LLMProvider"]

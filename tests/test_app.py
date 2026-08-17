@@ -45,7 +45,7 @@ def test_invalid_language_returns_400(client):
 
 
 def test_empty_text_returns_400(client):
-    response = client.post("/", data={"lyrics": "   ", "source_language": "ja", "provider": "groq"})
+    response = client.post("/", data={"lyrics": "   ", "source_language": "ja", "provider": "ai"})
     assert response.status_code == 400
 
 
@@ -74,7 +74,7 @@ def test_regenerate_api_passes_context(client, monkeypatch):
         captured.update(target_id=target_id, code=language.code, current=current, instruction=instruction)
         return "新譯文"
 
-    monkeypatch.setattr(application.groq_provider, "regenerate_line", regenerate)
+    monkeypatch.setattr(application.llm_provider, "regenerate_line", regenerate)
     response = client.post("/api/regenerate-line", json={
         "lyrics": "君が好き",
         "source_language": "ja",

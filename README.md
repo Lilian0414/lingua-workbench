@@ -4,7 +4,7 @@
 
 - 日文 → 台灣繁體中文＋Hepburn 羅馬字
 - 韓文 → 台灣繁體中文＋韓文修訂式羅馬字
-- Groq AI 整首翻譯與逐句重新生成
+- 任意 OpenAI-compatible AI 服務的整首翻譯與逐句重新生成
 - Googletrans 快速翻譯與逐句候選
 - 保留原文分行、譯文直接編輯、瀏覽器草稿、複製與 TXT 匯出
 
@@ -35,7 +35,7 @@ export ENABLED_LANGUAGES=ja,ko
 ```text
 core/       分行、資料模型、結果組裝與錯誤
 languages/  日文與韓文的拼音、翻譯提示與語言 metadata
-providers/  Groq、Googletrans，僅依賴 LanguagePack 介面
+providers/  通用 LLM、Googletrans，僅依賴 LanguagePack 介面
 templates/  Flask 頁面
 static/     無框架的互動與紙本視覺
 tests/      核心、語言包、供應商與 Flask 路由測試
@@ -55,7 +55,29 @@ cp .env.example .env
 flask --app app run --debug
 ```
 
-Groq 功能需要 `GROQ_API_KEY`。若只測 Google 翻譯，則不必設定 Groq key。
+AI 翻譯由部署者設定，網站的一般使用者不需要也不會被要求填 API key。若只使用 Google 翻譯，可以不設定 AI 服務。
+
+## 選擇 AI 廠商
+
+框架不綁定 Groq。任何提供 OpenAI-compatible `POST /chat/completions` 的服務都能使用：
+
+```env
+LLM_API_KEY=your_provider_api_key
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_MODEL=openai/gpt-oss-20b
+LLM_DISPLAY_NAME=AI 翻譯
+LLM_RESPONSE_FORMAT=json_schema
+```
+
+例如可改接 OpenAI、OpenRouter、DeepSeek 或其他相容廠商，只需換掉 `LLM_BASE_URL`、`LLM_MODEL` 與 API key。自訂端點只接受部署環境變數，不開放網站訪客填寫，以免公開服務出現 SSRF 風險。
+
+各廠商支援的結構化輸出不同：
+
+- `json_schema`：最嚴格，適合支援 JSON Schema 的模型。
+- `json_object`：廠商只支援 JSON mode 時使用。
+- `prompt_only`：完全不支援 `response_format` 時使用，框架仍會驗證每個行號。
+
+為了舊部署平順遷移，尚未設定 `LLM_API_KEY` 時仍會讀取既有的 `GROQ_API_KEY` 與 `GROQ_MODEL`。
 
 ## 測試
 
@@ -68,7 +90,7 @@ python -m compileall -q .
 ## Vercel
 
 1. 將 repository 匯入 Vercel。
-2. 新增 `GROQ_API_KEY` 環境變數。
+2. 新增 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 環境變數。
 3. 部署；`vercel.json` 已將 Flask 入口指向 `app.py`。
 
 目前不取代既有正式網站；新專案可先獨立預覽與驗收。
@@ -78,7 +100,7 @@ python -m compileall -q .
 - Flask：維持既有 Python 後端的低遷移成本。
 - `pykakasi`：日文 Hepburn 羅馬字。
 - `koroman`：韓文修訂式羅馬字與常見發音規則。
-- Groq JSON Schema：確保譯文逐行對齊。
+- OpenAI-compatible Chat Completions＋回傳驗證：支援不同 AI 廠商並確保譯文逐行對齊。
 - 原生 JavaScript：避免前端框架負擔，保持手機操作輕量。
 
 ## 授權

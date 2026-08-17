@@ -7,7 +7,7 @@ from core.formatter import build_results
 from core.parser import non_blank_lines, parse_text
 from languages import get_language, list_languages
 from languages.registry import SUPPORTED_LANGUAGE_CODES
-from providers import GoogleTransProvider, GroqProvider
+from providers import GoogleTransProvider, LLMProvider
 
 
 app = Flask(__name__)
@@ -16,7 +16,7 @@ app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
 MAX_TEXT_LENGTH = 12_000
 MAX_INSTRUCTION_LENGTH = 300
 
-groq_provider = GroqProvider()
+llm_provider = LLMProvider()
 google_provider = GoogleTransProvider()
 
 
@@ -55,7 +55,8 @@ def _render(error: str = "", status: int = 200, **context):
     context.setdefault("language", _language(source_code))
     context.setdefault("languages", list_languages(ENABLED_LANGUAGE_CODES))
     context.setdefault("source_language", source_code)
-    context.setdefault("provider", "groq")
+    context.setdefault("provider", "ai")
+    context.setdefault("ai_provider_name", llm_provider.name)
     context.setdefault("lyrics", "")
     context.setdefault("results", [])
     context.setdefault("error", error)
@@ -71,7 +72,7 @@ def index():
 def translate_document():
     lyrics = request.form.get("lyrics", "")
     source_language = request.form.get("source_language", DEFAULT_SOURCE_LANGUAGE)
-    provider_name = request.form.get("provider", "groq")
+    provider_name = request.form.get("provider", "ai")
     base = {
         "lyrics": lyrics,
         "source_language": source_language,
@@ -84,8 +85,8 @@ def translate_document():
         lines = parse_text(lyrics)
         if not non_blank_lines(lines):
             raise TranslationError("請先貼上要翻譯的歌詞。", status_code=400)
-        if provider_name == "groq":
-            translations = groq_provider.translate(lines, language)
+        if provider_name in {"ai", "groq"}:
+            translations = llm_provider.translate(lines, language)
         elif provider_name == "google":
             translations = google_provider.translate(lines, language)
         else:
@@ -127,14 +128,14 @@ def regenerate_line():
             for key, value in raw_current.items()
             if str(key).isdigit()
         } if isinstance(raw_current, dict) else {}
-        translation = groq_provider.regenerate_line(
+        translation = llm_provider.regenerate_line(
             lines,
             target_id,
             language,
             current,
             instruction,
         )
-        return jsonify({"translation": translation, "provider": groq_provider.name})
+        return jsonify({"translation": translation, "provider": llm_provider.name})
     except TranslationError as exc:
         response = jsonify({"error": exc.user_message})
         response.status_code = exc.status_code

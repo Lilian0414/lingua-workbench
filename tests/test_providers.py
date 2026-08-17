@@ -7,52 +7,97 @@ from core.errors import TranslationError
 from core.parser import parse_text
 from languages import get_language
 from providers.googletrans_provider import GoogleTransProvider
-from providers.groq_provider import GroqProvider
+from providers.llm_provider import LLMProvider
 
 
-class FakeCompletions:
-    def __init__(self, content):
+class FakeResponse:
+    def __init__(self, content, status_code=200, headers=None):
         self.content = content
-        self.kwargs = None
+        self.status_code = status_code
+        self.headers = headers or {}
 
-    def create(self, **kwargs):
-        self.kwargs = kwargs
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=self.content))]
-        )
+    def json(self):
+        return {"choices": [{"message": {"content": self.content}}]}
 
 
-def fake_client(content):
-    completions = FakeCompletions(content)
-    client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
-    return client, completions
+class FakeClient:
+    def __init__(self, content):
+        self.response = FakeResponse(content)
+        self.calls = []
+
+    def post(self, url, **kwargs):
+        self.calls.append((url, kwargs))
+        return self.response
 
 
-def test_groq_uses_selected_language_and_strict_ids():
-    client, completions = fake_client('{"0":"你好","1":"世界"}')
-    result = GroqProvider(client).translate(parse_text("안녕\n세계"), get_language("ko"))
+def fake_provider(content, **kwargs):
+    client = FakeClient(content)
+    provider = LLMProvider(
+        client,
+        api_key="test-key",
+        base_url="https://llm.example/v1",
+        model="example-model",
+        **kwargs,
+    )
+    return provider, client
+
+
+def test_llm_uses_selected_language_and_strict_ids():
+    provider, client = fake_provider('{"0":"你好","1":"世界"}')
+    result = provider.translate(parse_text("안녕\n세계"), get_language("ko"))
     assert result == {0: "你好", 1: "世界"}
-    assert "韓文" in completions.kwargs["messages"][0]["content"]
-    schema = completions.kwargs["response_format"]["json_schema"]["schema"]
+    url, request = client.calls[0]
+    assert url == "https://llm.example/v1/chat/completions"
+    assert request["headers"]["Authorization"] == "Bearer test-key"
+    assert request["json"]["model"] == "example-model"
+    assert "韓文" in request["json"]["messages"][0]["content"]
+    schema = request["json"]["response_format"]["json_schema"]["schema"]
     assert schema["required"] == ["0", "1"]
     assert schema["additionalProperties"] is False
 
 
-def test_groq_rejects_missing_line():
-    client, _ = fake_client('{"0":"只有一行"}')
+def test_llm_rejects_missing_line():
+    provider, _ = fake_provider('{"0":"只有一行"}')
     with pytest.raises(TranslationError, match="格式不完整"):
-        GroqProvider(client).translate(parse_text("一\n二"), get_language("ja"))
+        provider.translate(parse_text("一\n二"), get_language("ja"))
 
 
-def test_groq_regeneration_uses_context_and_instruction():
-    client, completions = fake_client('{"1":"換個說法"}')
-    value = GroqProvider(client).regenerate_line(
+def test_llm_regeneration_uses_context_and_instruction():
+    provider, client = fake_provider('{"1":"換個說法"}')
+    value = provider.regenerate_line(
         parse_text("一\n二"), 1, get_language("ja"), {0: "壹", 1: "貳"}, "更口語"
     )
     assert value == "換個說法"
-    payload = json.loads(completions.kwargs["messages"][1]["content"])
+    payload = json.loads(client.calls[0][1]["json"]["messages"][1]["content"])
     assert payload["target_id"] == 1
     assert payload["instruction"] == "更口語"
+
+
+@pytest.mark.parametrize(
+    ("mode", "expected"),
+    [
+        ("json_object", {"type": "json_object"}),
+        ("prompt_only", None),
+    ],
+)
+def test_llm_supports_provider_specific_response_formats(mode, expected):
+    provider, client = fake_provider('{"0":"翻譯"}', response_format=mode)
+    provider.translate(parse_text("原文"), get_language("ja"))
+    payload = client.calls[0][1]["json"]
+    assert payload.get("response_format") == expected
+
+
+def test_llm_accepts_markdown_wrapped_json():
+    provider, _ = fake_provider('```json\n{"0":"翻譯"}\n```', response_format="prompt_only")
+    assert provider.translate(parse_text("原文"), get_language("ja")) == {0: "翻譯"}
+
+
+def test_llm_requires_deployment_key(monkeypatch):
+    for name in ("LLM_API_KEY", "GROQ_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    provider = LLMProvider(FakeClient('{"0":"翻譯"}'), api_key=None)
+    with pytest.raises(TranslationError, match="LLM_API_KEY"):
+        provider.translate(parse_text("原文"), get_language("ja"))
 
 
 class FakeGoogle:

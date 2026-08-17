@@ -26,7 +26,7 @@
     if (!lyrics) return;
     const draft = {
       sourceLanguage: sourceLanguage(),
-      provider: document.querySelector("#provider")?.value || "groq",
+      provider: document.querySelector("#provider")?.value || "ai",
       lyrics: lyrics.value,
       translations: currentTranslations(),
       savedAt: Date.now(),
@@ -52,8 +52,8 @@
       );
       if (languageControl) languageControl.checked = true;
       const providerControl = document.querySelector("#provider");
-      if (providerControl && ["groq", "google"].includes(draft.provider)) {
-        providerControl.value = draft.provider;
+      if (providerControl && ["ai", "groq", "google"].includes(draft.provider)) {
+        providerControl.value = draft.provider === "groq" ? "ai" : draft.provider;
       }
     }
     if (results && draft.lyrics === lyrics?.value && draft.sourceLanguage === sourceLanguage()) {
