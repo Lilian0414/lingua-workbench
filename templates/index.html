@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4eee2">
+  <title>Lingua Workbench｜日韓歌詞翻譯手帖</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body data-source-language="{{ source_language }}">
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="回到首頁">
+      <span class="brand-mark" aria-hidden="true">語</span>
+      <span><strong>Lingua Workbench</strong><small>日韓歌詞翻譯手帖</small></span>
+    </a>
+    <span class="privacy-note">草稿只留在你的瀏覽器</span>
+  </header>
+
+  <main class="page-shell">
+    <section class="intro">
+      <p class="eyebrow">LYRICS · READING · TRANSLATION</p>
+      <h1>把陌生的歌詞，<br>整理成讀得懂的筆記。</h1>
+      <p>保留原文分行，並排查看拼音與台灣繁體中文。譯文可以直接修改，也能逐句比較不同翻譯。</p>
+    </section>
+
+    <form class="workbench" method="post" id="translation-form">
+      {% if languages|length > 1 %}
+      <fieldset class="language-picker">
+        <legend>來源語言</legend>
+        <div class="segmented">
+          {% for item in languages %}
+          <label>
+            <input type="radio" name="source_language" value="{{ item.code }}" {% if item.code == source_language %}checked{% endif %}>
+            <span>{{ item.display_name }} <small>{{ item.native_name }}</small></span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% else %}
+      <input type="hidden" name="source_language" value="{{ source_language }}">
+      <p class="fixed-language">來源語言：<strong>{{ language.display_name }} · {{ language.native_name }}</strong></p>
+      {% endif %}
+
+      <label class="field-label" for="lyrics">歌詞原文</label>
+      <textarea id="lyrics" name="lyrics" maxlength="12000" placeholder="把日文或韓文歌詞貼在這裡…" required>{{ lyrics }}</textarea>
+
+      <div class="form-footer">
+        <label class="provider-select">翻譯方式
+          <select name="provider" id="provider">
+            <option value="groq" {% if provider == 'groq' %}selected{% endif %}>Groq AI（較自然）</option>
+            <option value="google" {% if provider == 'google' %}selected{% endif %}>Google 翻譯（較快速）</option>
+          </select>
+        </label>
+        <button class="primary-button" type="submit" id="submit-button">
+          <span>開始整理</span><span aria-hidden="true">→</span>
+        </button>
+      </div>
+      <p class="form-status" id="form-status" aria-live="polite"></p>
+    </form>
+
+    {% if error %}
+    <aside class="error-card" role="alert"><strong>暫時沒有完成</strong><span>{{ error }}</span></aside>
+    {% endif %}
+
+    {% if results %}
+    <section class="results" id="results" data-language="{{ source_language }}" data-reading-label="{{ language.reading_label }}">
+      <div class="results-header">
+        <div><p class="eyebrow">WORKING NOTES</p><h2>{{ language.display_name }}翻譯筆記</h2></div>
+        <div class="document-actions">
+          <button type="button" class="ghost-button" id="copy-button">複製全文</button>
+          <button type="button" class="ghost-button" id="download-button">下載 TXT</button>
+        </div>
+      </div>
+
+      <div class="column-head" aria-hidden="true">
+        <span>原文 / {{ language.reading_label }}</span><span>台灣繁體中文（可編輯）</span>
+      </div>
+
+      <div class="line-list">
+        {% for line in results %}
+          {% if line.is_blank %}
+          <div class="blank-line" aria-hidden="true"></div>
+          {% else %}
+          <article class="translation-line" data-line-id="{{ line.id }}" data-original="{{ line.original|e }}" data-reading="{{ line.reading|e }}">
+            <div class="source-column">
+              <span class="line-number">{{ '%02d'|format(line.id + 1) }}</span>
+              <p class="original" lang="{{ language.html_lang }}">{{ line.original }}</p>
+              <p class="reading">{{ line.reading }}</p>
+            </div>
+            <div class="translation-column">
+              <textarea class="translation-input" rows="2" aria-label="第 {{ line.id + 1 }} 行中文翻譯">{{ line.translation }}</textarea>
+              <div class="line-toolbar">
+                <span class="provider-badge">{{ 'Groq AI' if provider == 'groq' else 'Google 翻譯' }}</span>
+                <button type="button" class="text-button google-button">Google 候選</button>
+                <button type="button" class="text-button regenerate-button">重新翻譯</button>
+              </div>
+              <div class="instruction-panel" hidden>
+                <input type="text" class="instruction-input" maxlength="300" placeholder="可選：例如更口語、保留曖昧語氣">
+                <button type="button" class="small-button regenerate-confirm">送出</button>
+              </div>
+              <div class="candidate" hidden>
+                <div><strong class="candidate-provider"></strong><p class="candidate-text"></p></div>
+                <div><button type="button" class="small-button apply-candidate">採用</button><button type="button" class="text-button dismiss-candidate">收起</button></div>
+              </div>
+              <p class="line-status" aria-live="polite"></p>
+            </div>
+          </article>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <p class="saved-status" id="saved-status" aria-live="polite">變更會自動保存在這台裝置。</p>
+    </section>
+    {% endif %}
+  </main>
+
+  <footer>Made for close reading · 先理解，再翻譯</footer>
+</body>
+</html>

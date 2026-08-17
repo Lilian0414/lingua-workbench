@@ -1,0 +1,3 @@
+-r requirements-core.txt
+koroman>=1.0.16,<2
+pykakasi>=2.3,<3
