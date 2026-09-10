@@ -56,6 +56,21 @@ def test_llm_uses_selected_language_and_strict_ids():
     assert schema["additionalProperties"] is False
 
 
+def test_llm_preserves_chant_locally_but_keeps_it_in_full_context():
+    provider, client = fake_provider('{"1":"世界"}')
+    result = provider.translate(parse_text("ラララ\n世界"), get_language("ja"))
+
+    assert result == {0: "ラララ", 1: "世界"}
+    request = client.calls[0][1]["json"]
+    payload = json.loads(request["messages"][1]["content"].split("：\n", 1)[1])
+    assert payload == {
+        "source_lines": {"0": "ラララ", "1": "世界"},
+        "target_ids": [1],
+    }
+    assert request["response_format"]["json_schema"]["schema"]["required"] == ["1"]
+    assert "無語意的吟唱可保留原文" in request["messages"][0]["content"]
+
+
 def test_llm_rejects_missing_line():
     provider, _ = fake_provider('{"0":"只有一行"}')
     with pytest.raises(TranslationError, match="格式不完整"):
@@ -117,6 +132,26 @@ def test_google_provider_uses_language_source_code(code, google_code):
     result = GoogleTransProvider(translator).translate(parse_text("第一行"), get_language(code))
     assert result == {0: "譯:第一行"}
     assert translator.calls[0][1] == {"src": google_code, "dest": "zh-tw"}
+
+
+def test_google_provider_preserves_chants_before_batch_translation():
+    translator = FakeGoogle()
+    result = GoogleTransProvider(translator).translate(
+        parse_text("啦啦啦\n君が好き"), get_language("ja")
+    )
+
+    assert result == {0: "啦啦啦", 1: "譯:君が好き"}
+    assert translator.calls[0][0] == ["君が好き"]
+
+
+def test_google_provider_skips_call_when_all_lines_are_chants():
+    translator = FakeGoogle()
+    result = GoogleTransProvider(translator).translate(
+        parse_text("ラララ\noh-oh-oh"), get_language("ja")
+    )
+
+    assert result == {0: "ラララ", 1: "oh-oh-oh"}
+    assert translator.calls == []
 
 
 def test_google_provider_creates_fresh_async_translator_for_consecutive_calls():

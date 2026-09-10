@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask, jsonify, render_template, request
+from dotenv import load_dotenv
 
 from core.errors import TranslationError
 from core.formatter import build_results
@@ -10,6 +11,7 @@ from languages.registry import SUPPORTED_LANGUAGE_CODES
 from providers import GoogleTransProvider, LLMProvider
 
 
+load_dotenv()
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
 
@@ -40,7 +42,7 @@ def _language(code: str):
     if code not in SUPPORTED_LANGUAGE_CODES:
         raise TranslationError(f"不支援的來源語言：{code}", status_code=400)
     if code not in ENABLED_LANGUAGE_CODES:
-        raise TranslationError(f"這個部署沒有啟用來源語言：{code}", status_code=400)
+        raise TranslationError(f"這個本機設定沒有啟用來源語言：{code}", status_code=400)
     try:
         return get_language(code)
     except ValueError as exc:

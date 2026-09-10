@@ -77,7 +77,13 @@ class LLMProvider:
             "保留原本分行，不增刪、合併或拆分任何行。"
             f"{language.prompt_notes}只回傳以行號為 key、譯文為 value 的 JSON object。"
         )
-        user = "請依照行號逐行翻譯：\n" + json.dumps(targets, ensure_ascii=False)
+        context = {
+            "source_lines": source,
+            "target_ids": [int(line_id) for line_id in targets],
+        }
+        user = "請依照 target_ids 逐行翻譯，並參考完整 source_lines：\n" + json.dumps(
+            context, ensure_ascii=False
+        )
         data = self._complete(system, user, [int(key) for key in targets])
         data.update(preserved)
         return data
@@ -123,7 +129,7 @@ class LLMProvider:
     def _post(self, payload: dict[str, Any]) -> Any:
         if not self.api_key:
             raise TranslationError(
-                "此部署尚未設定 LLM_API_KEY。請由網站維護者設定 AI 翻譯服務。",
+                "本機尚未設定 LLM_API_KEY。請在 .env 設定 AI 翻譯服務。",
                 status_code=503,
             )
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}

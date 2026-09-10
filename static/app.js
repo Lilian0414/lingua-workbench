@@ -191,6 +191,15 @@
       flashButton(event.currentTarget, "✓ 已還原");
     });
 
+    article.querySelector(".preserve-source-button").addEventListener("click", (event) => {
+      editor.value = article.dataset.original;
+      updateEditedState(article);
+      article.querySelectorAll(".candidate-panel").forEach((panel) => { panel.hidden = true; });
+      scheduleSave();
+      setLineStatus(article, "已將譯文設為原文。", "success");
+      flashButton(event.currentTarget, "✓ 已保留");
+    });
+
     article.querySelector(".regenerate-button").addEventListener("click", async (event) => {
       const button = event.currentTarget;
       const style = article.querySelector(".style-select").value;
