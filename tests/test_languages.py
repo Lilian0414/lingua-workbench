@@ -1,6 +1,7 @@
 import pytest
 
 from languages import get_language, list_languages
+from languages.common import looks_like_chant
 from languages.japanese import JapaneseLanguagePack
 from languages.korean import KoreanLanguagePack
 
@@ -50,6 +51,41 @@ def test_registry_exposes_only_mvp_languages():
         get_language("fr")
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        "ラララ",
+        "ラ ラ ラ",
+        "啦啦啦",
+        "나 나 나",
+        "la la la",
+        "oh-oh-oh",
+        "タッタタラリラ",
+        "ピーヒャラピーヒャラ",
+        "ピーヒャラ ピー",
+        "パッパパラパ",
+    ],
+)
+def test_chant_classifier_preserves_known_whole_line_vocables(source):
+    assert looks_like_chant(source) is True
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "language",
+        "landscape",
+        "natural",
+        "la vie en rose",
+        "Oh 君が好き",
+        "나를 사랑해",
+        "ラララと歌う",
+    ],
+)
+def test_chant_classifier_rejects_words_and_ambiguous_lyrics(source):
+    assert looks_like_chant(source) is False
+
+
 @pytest.mark.parametrize("code", ["ja", "ko"])
-def test_language_packs_preserve_common_chants(code):
+def test_language_packs_share_common_chant_classifier(code):
     assert get_language(code).should_preserve("la la la") is True

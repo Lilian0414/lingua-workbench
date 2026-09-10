@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -42,6 +43,21 @@ def test_korean_document_translation_renders_reading(client, monkeypatch):
     assert 'class="lyric-line"' in response.text
     assert 'class="style-select"' in response.text
     assert 'class="line-button reset-line-button"' in response.text
+    assert 'class="line-button preserve-source-button"' in response.text
+    assert "保留原文" in response.text
+
+
+def test_preserve_source_action_updates_editor_and_draft_workflow():
+    script = (Path(application.app.root_path) / "static" / "app.js").read_text()
+    handler = script.split(
+        'article.querySelector(".preserve-source-button")', 1
+    )[1].split(
+        'article.querySelector(".regenerate-button")', 1
+    )[0]
+
+    assert "editor.value = article.dataset.original" in handler
+    assert "scheduleSave()" in handler
+    assert "currentTranslation(element)" in script
 
 
 def test_invalid_language_returns_400(client):

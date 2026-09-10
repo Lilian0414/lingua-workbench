@@ -43,9 +43,13 @@ class GoogleTransProvider:
         return asyncio.run(execute())
 
     def translate(self, lines: list[ParsedLine], language: LanguagePack) -> dict[int, str]:
-        targets = [line for line in lines if not line.is_blank and line.id is not None]
+        source_lines = [line for line in lines if not line.is_blank and line.id is not None]
+        preserved = {
+            line.id: line.text for line in source_lines if language.should_preserve(line.text)
+        }
+        targets = [line for line in source_lines if line.id not in preserved]
         if not targets:
-            return {}
+            return preserved
         try:
             result = self._translate_once(
                 [line.text for line in targets],
@@ -56,13 +60,19 @@ class GoogleTransProvider:
                 result = [result]
             if len(result) != len(targets):
                 raise ValueError("translation count mismatch")
-            return {line.id: item.text.strip() for line, item in zip(targets, result, strict=True)}
+            translated = {
+                line.id: item.text.strip() for line, item in zip(targets, result, strict=True)
+            }
+            translated.update(preserved)
+            return translated
         except Exception as exc:
             raise TranslationError("Google 翻譯暫時無法使用，請稍後再試。", status_code=503) from exc
 
     def translate_line(self, text: str, language: LanguagePack) -> str:
         if not text.strip():
             return ""
+        if language.should_preserve(text):
+            return text
         try:
             result = self._translate_once(
                 text,

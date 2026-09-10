@@ -8,11 +8,11 @@
 - Googletrans 快速翻譯與逐句候選
 - 保留原文分行、譯文直接編輯、瀏覽器草稿、複製與 TXT 匯出
 
-此 repository 是從既有日文翻譯專案抽出的新架構；原專案與其部署不受影響。
+此 repository 是從既有日文翻譯專案抽出的新架構；原專案不受影響。
 
 ## 選擇要安裝的語言
 
-這個框架在下載／部署時就能決定要帶哪些語言：
+這個框架在安裝與啟動時就能決定要帶哪些語言：
 
 ```bash
 # 只做日文版
@@ -52,10 +52,14 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
 cp .env.example .env
-flask --app app run --debug
+python -m flask --app app run --debug
 ```
 
-AI 翻譯由部署者設定，網站的一般使用者不需要也不會被要求填 API key。若只使用 Google 翻譯，可以不設定 AI 服務。
+接著在瀏覽器開啟 <http://127.0.0.1:5000>。應用程式啟動時會從專案根目錄的
+`.env` 載入本機設定；此檔已被 Git 忽略，請勿提交真正的 API key。Windows PowerShell
+啟用虛擬環境時請使用 `.venv\\Scripts\\Activate.ps1`。
+
+AI 翻譯由本機使用者設定，網頁不會要求或接觸 API key。若只使用 Google 翻譯，可以不設定 AI 服務。
 
 ## 選擇 AI 廠商
 
@@ -69,7 +73,7 @@ LLM_DISPLAY_NAME=AI 翻譯
 LLM_RESPONSE_FORMAT=json_schema
 ```
 
-例如可接 OpenAI、OpenRouter、DeepSeek 或其他相容廠商，只需換掉 `LLM_BASE_URL`、`LLM_MODEL` 與 API key。自訂端點只接受部署環境變數，不開放網站訪客填寫，以免公開服務出現 SSRF 風險。
+例如可接 OpenAI、OpenRouter、DeepSeek 或其他相容廠商，只需換掉 `LLM_BASE_URL`、`LLM_MODEL` 與 API key。自訂端點只接受本機環境變數，不會傳到瀏覽器端。
 
 各廠商支援的結構化輸出不同：
 
@@ -85,13 +89,6 @@ pytest -q
 node --check static/app.js
 python -m compileall -q .
 ```
-
-## Vercel
-
-1. 將 repository 匯入 Vercel。
-2. 新增 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 環境變數。
-3. 部署；`vercel.json` 已將 Flask 入口指向 `app.py`。
-
 
 ## 技術選擇
 
